@@ -1,4 +1,4 @@
-# fast_set_input
+# Quick-IME
 
 一行指令，把 Windows 11 的輸入法設成 **ENG（英文鍵盤）+ 繁體中文（微軟注音）**。
 
@@ -9,7 +9,7 @@
 ## 快速使用
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FanFantom9452/fast_set_input/main/install.ps1 | iex"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FanFantom9452/Quick-IME/main/install.ps1 | iex"
 ```
 
 執行後語言列會變成：
@@ -24,8 +24,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubus
 ## 本機執行
 
 ```powershell
-git clone https://github.com/FanFantom9452/fast_set_input.git
-cd fast_set_input
+git clone https://github.com/FanFantom9452/Quick-IME.git
+cd Quick-IME
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
@@ -87,7 +87,7 @@ Set-WinUserLanguageList $list -Force
 `irm | iex` 會直接執行網路上的程式碼。跑之前建議先讀過：
 
 ```powershell
-irm https://raw.githubusercontent.com/FanFantom9452/fast_set_input/main/install.ps1
+irm https://raw.githubusercontent.com/FanFantom9452/Quick-IME/main/install.ps1
 ```
 
 整份腳本 60 行左右，沒有相依套件、不下載其他檔案、不寫登錄檔、不需要提權。
@@ -99,7 +99,7 @@ irm https://raw.githubusercontent.com/FanFantom9452/fast_set_input/main/install.
 One-liner to set the Windows 11 input list to **ENG (US keyboard) + Traditional Chinese (Microsoft Bopomofo)**. No admin, no reboot, safe to re-run.
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FanFantom9452/fast_set_input/main/install.ps1 | iex"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FanFantom9452/Quick-IME/main/install.ps1 | iex"
 ```
 
 Works even if ENG was never added — the US keyboard layout ships with every Windows SKU. Only `zh-Hant-TW` needs its language feature installed (`Install-Language zh-Hant-TW` as admin if missing).

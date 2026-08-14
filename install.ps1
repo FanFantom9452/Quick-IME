@@ -11,7 +11,7 @@
     language feature installed.
 
 .EXAMPLE
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FanFantom9452/fast_set_input/main/install.ps1 | iex"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FanFantom9452/Quick-IME/main/install.ps1 | iex"
 #>
 
 # ponytail: ASCII only. Windows PowerShell 5.1 reads a BOM-less .ps1 as ANSI,
@@ -29,7 +29,7 @@ function Show-List($label, $color) {
         Out-Host
 }
 
-Write-Host 'fast_set_input  -  ENG + Traditional Chinese (zh-Hant-TW)' -ForegroundColor Cyan
+Write-Host 'Quick-IME  -  ENG + Traditional Chinese (zh-Hant-TW)' -ForegroundColor Cyan
 Show-List 'Before:' DarkGray
 
 $list = New-WinUserLanguageList en-US
