@@ -1,18 +1,21 @@
 <#
 .SYNOPSIS
-    Adds ENG (US keyboard) to the Windows 11 input list without touching anything else.
+    Adds ENG (US keyboard) and Microsoft Bopomofo to the Windows 11 input list
+    without touching anything else.
 
 .DESCRIPTION
     Per-user, no admin required. Reads the current language list and only adds
-    the US keyboard layout (0409:00000409):
+    what is missing, one input method at a time:
 
-      - some language already has ENG -> nothing changes
-      - en-US is in the list without ENG -> ENG is added to that en-US entry
-      - en-US is not in the list -> en-US is appended at the end with ENG only
+      - some language already has it -> nothing changes for it
+      - its language is in the list without it -> it is added to that entry
+      - its language is not in the list -> the language is appended at the
+        end with only that input method
 
-    Language order, the display language and every other input method stay as
-    they were. The US keyboard layout ships with every Windows SKU, so ENG
-    applies even if the user has never added it.
+    ENG is the US keyboard (0409:00000409) under en-US; Bopomofo is under
+    zh-Hant-TW. Language order, the display language and every other input
+    method stay as they were. The US keyboard ships with every Windows SKU;
+    Bopomofo needs the zh-Hant-TW language feature installed.
 
 .EXAMPLE
     powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FanFantom9452/Quick-IME/main/install.ps1 | iex"
@@ -25,7 +28,13 @@
 
 $ErrorActionPreference = 'Stop'
 
-$ENG = '0409:00000409'
+$ENG      = '0409:00000409'
+$BOPOMOFO = '0404:{B115690A-EA02-48D5-A231-E3578D2FDF80}{B2F9C502-1742-11D4-9790-0080C882687E}'
+
+$wanted = @(
+    @{ Name = 'ENG (US keyboard)'; Tag = 'en-US';      Tip = $ENG }
+    @{ Name = 'Microsoft Bopomofo'; Tag = 'zh-Hant-TW'; Tip = $BOPOMOFO }
+)
 
 function Show-List($label, $color) {
     Write-Host "`n$label" -ForegroundColor $color
@@ -34,7 +43,7 @@ function Show-List($label, $color) {
         Out-Host
 }
 
-Write-Host 'Quick-IME  -  add ENG (US keyboard)' -ForegroundColor Cyan
+Write-Host 'Quick-IME  -  add ENG + Microsoft Bopomofo' -ForegroundColor Cyan
 Show-List 'Before:' DarkGray
 
 $list  = Get-WinUserLanguageList
@@ -42,32 +51,38 @@ $list  = Get-WinUserLanguageList
 # so it must stay where it is.
 $first = $list[0].LanguageTag
 
-if ($list | Where-Object { $_.InputMethodTips -contains $ENG }) {
-    Write-Host 'ENG is already installed. Nothing changed.' -ForegroundColor Cyan
+$changed = $false
+foreach ($w in $wanted) {
+    if ($list | Where-Object { $_.InputMethodTips -contains $w.Tip }) {
+        Write-Host "$($w.Name) is already installed." -ForegroundColor DarkGray
+        continue
+    }
+    $entry = $list | Where-Object LanguageTag -eq $w.Tag | Select-Object -First 1
+    if (-not $entry) {
+        $list.Add($w.Tag)
+        $entry = $list[$list.Count - 1]
+        $entry.InputMethodTips.Clear()
+    }
+    $entry.InputMethodTips.Add($w.Tip)
+    $changed = $true
+}
+
+if (-not $changed) {
+    Write-Host 'Nothing changed.' -ForegroundColor Cyan
 }
 else {
-    # Not $eng: PowerShell variable names are case-insensitive, so it would
-    # silently overwrite the $ENG constant.
-    $enUS = $list | Where-Object LanguageTag -eq 'en-US' | Select-Object -First 1
-    if ($enUS) {
-        $enUS.InputMethodTips.Add($ENG)
-    }
-    else {
-        $list.Add('en-US')
-        $enUS = $list[$list.Count - 1]
-        $enUS.InputMethodTips.Clear()
-        $enUS.InputMethodTips.Add($ENG)
-    }
-
     Set-WinUserLanguageList $list -Force -WarningAction SilentlyContinue
 
     Show-List 'After:' Green
 
     # Self-check: a rejected input method leaves the language in the list with
-    # an empty tip list, so verify the tip landed, not just the language tag.
+    # an empty tip list, so verify the tips landed, not just the language tags.
     $now = Get-WinUserLanguageList
     if (-not ($now | Where-Object { $_.InputMethodTips -contains $ENG })) {
         throw "ENG (US keyboard) did not apply. Current list: $($now.LanguageTag -join ', ')"
+    }
+    if (-not ($now | Where-Object { $_.InputMethodTips -contains $BOPOMOFO })) {
+        throw 'Microsoft Bopomofo did not apply. Install the language feature as admin: Install-Language zh-Hant-TW'
     }
     if ($now[0].LanguageTag -ne $first) {
         throw "First language changed from $first to $($now[0].LanguageTag). Move $first back to the top in Settings > Time & language > Language & region."
