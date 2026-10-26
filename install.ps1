@@ -1,14 +1,18 @@
 <#
 .SYNOPSIS
-    Sets the Windows 11 input list to ENG (US keyboard) + Traditional Chinese (Bopomofo).
+    Adds ENG (US keyboard) to the Windows 11 input list without touching anything else.
 
 .DESCRIPTION
-    Per-user, no admin required. Replaces the current language list with
-    en-US (ENG) first, then zh-Hant-TW with Microsoft Bopomofo.
+    Per-user, no admin required. Reads the current language list and only adds
+    the US keyboard layout (0409:00000409):
 
-    The US keyboard layout (0409:00000409) ships with every Windows SKU, so
-    ENG applies even if the user has never added it. Only zh-Hant-TW needs the
-    language feature installed.
+      - some language already has ENG -> nothing changes
+      - en-US is in the list without ENG -> ENG is added to that en-US entry
+      - en-US is not in the list -> en-US is appended at the end with ENG only
+
+    Language order, the display language and every other input method stay as
+    they were. The US keyboard layout ships with every Windows SKU, so ENG
+    applies even if the user has never added it.
 
 .EXAMPLE
     powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/FanFantom9452/Quick-IME/main/install.ps1 | iex"
@@ -17,10 +21,11 @@
 # ponytail: ASCII only. Windows PowerShell 5.1 reads a BOM-less .ps1 as ANSI,
 # so non-ASCII literals here show up as mojibake when run with -File.
 
+# No `exit` anywhere: under `irm | iex` it would close the user's window.
+
 $ErrorActionPreference = 'Stop'
 
-$ENG      = '0409:00000409'
-$BOPOMOFO = '0404:{B115690A-EA02-48D5-A231-E3578D2FDF80}{B2F9C502-1742-11D4-9790-0080C882687E}'
+$ENG = '0409:00000409'
 
 function Show-List($label, $color) {
     Write-Host "`n$label" -ForegroundColor $color
@@ -29,34 +34,44 @@ function Show-List($label, $color) {
         Out-Host
 }
 
-Write-Host 'Quick-IME  -  ENG + Traditional Chinese (zh-Hant-TW)' -ForegroundColor Cyan
+Write-Host 'Quick-IME  -  add ENG (US keyboard)' -ForegroundColor Cyan
 Show-List 'Before:' DarkGray
 
-$list = New-WinUserLanguageList en-US
-$list[0].InputMethodTips.Clear()
-$list[0].InputMethodTips.Add($ENG)
+$list  = Get-WinUserLanguageList
+# Windows uses the first language as the display language and default input,
+# so it must stay where it is.
+$first = $list[0].LanguageTag
 
-$list.Add('zh-Hant-TW')
-$list[1].InputMethodTips.Clear()
-$list[1].InputMethodTips.Add($BOPOMOFO)
-
-Set-WinUserLanguageList $list -Force -WarningAction SilentlyContinue
-
-Show-List 'After:' Green
-
-# Self-check: a rejected input method leaves the language in the list with an
-# empty tip list, so verify the tips landed, not just the language tags.
-$now = Get-WinUserLanguageList
-# Names must not collide with $ENG / $BOPOMOFO: PowerShell variable names are
-# case-insensitive, so an $eng here would silently overwrite the $ENG constant.
-$engEntry = $now | Where-Object LanguageTag -eq 'en-US'
-$zhEntry  = $now | Where-Object LanguageTag -eq 'zh-Hant-TW'
-
-if (-not $engEntry -or $engEntry.InputMethodTips -notcontains $ENG) {
-    throw "ENG (US keyboard) did not apply. Current list: $($now.LanguageTag -join ', ')"
+if ($list | Where-Object { $_.InputMethodTips -contains $ENG }) {
+    Write-Host 'ENG is already installed. Nothing changed.' -ForegroundColor Cyan
 }
-if (-not $zhEntry -or $zhEntry.InputMethodTips -notcontains $BOPOMOFO) {
-    throw 'Traditional Chinese did not apply. Install the language feature as admin: Install-Language zh-Hant-TW'
-}
+else {
+    # Not $eng: PowerShell variable names are case-insensitive, so it would
+    # silently overwrite the $ENG constant.
+    $enUS = $list | Where-Object LanguageTag -eq 'en-US' | Select-Object -First 1
+    if ($enUS) {
+        $enUS.InputMethodTips.Add($ENG)
+    }
+    else {
+        $list.Add('en-US')
+        $enUS = $list[$list.Count - 1]
+        $enUS.InputMethodTips.Clear()
+        $enUS.InputMethodTips.Add($ENG)
+    }
 
-Write-Host 'Done. Win+Space to switch. Sign out/in if the taskbar indicator lags.' -ForegroundColor Cyan
+    Set-WinUserLanguageList $list -Force -WarningAction SilentlyContinue
+
+    Show-List 'After:' Green
+
+    # Self-check: a rejected input method leaves the language in the list with
+    # an empty tip list, so verify the tip landed, not just the language tag.
+    $now = Get-WinUserLanguageList
+    if (-not ($now | Where-Object { $_.InputMethodTips -contains $ENG })) {
+        throw "ENG (US keyboard) did not apply. Current list: $($now.LanguageTag -join ', ')"
+    }
+    if ($now[0].LanguageTag -ne $first) {
+        throw "First language changed from $first to $($now[0].LanguageTag). Move $first back to the top in Settings > Time & language > Language & region."
+    }
+
+    Write-Host 'Done. Win+Space to switch. Sign out/in if the taskbar indicator lags.' -ForegroundColor Cyan
+}
